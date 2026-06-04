@@ -566,6 +566,120 @@ Collections.sort(list,
     Comparator.comparing(Employee::getSalary));
 ```
 
+### Comparator Chaining (Multi-Level Sorting)
+
+Use `thenComparing()` to add tie-breakers when two objects have the same value for the previous comparison field.
+
+```java
+Collections.sort(list,
+    Comparator.comparing(Employee::getSalary)
+              .thenComparing(Employee::getAge)
+              .thenComparing(Employee::getName)
+);
+```
+
+Equivalent using `List.sort()`:
+
+```java
+list.sort(
+    Comparator.comparing(Employee::getSalary)
+              .thenComparing(Employee::getAge)
+              .thenComparing(Employee::getName)
+);
+```
+
+**Sort Order:**
+1. Salary (Ascending)
+2. Age (Ascending)
+3. Name (Alphabetical)
+
+---
+
+### Descending Order
+
+```java
+list.sort(
+    Comparator.comparing(Employee::getSalary)
+              .reversed()
+);
+```
+
+Salary Descending, Age Ascending:
+
+```java
+list.sort(
+    Comparator.comparing(Employee::getSalary)
+              .reversed()
+              .thenComparing(Employee::getAge)
+);
+```
+
+---
+
+### Primitive Comparator Variants
+
+Prefer these for primitive fields to avoid boxing/unboxing:
+
+```java
+Comparator.comparingInt(Employee::getAge)
+Comparator.comparingLong(Employee::getId)
+Comparator.comparingDouble(Employee::getSalary)
+```
+
+---
+
+### Method Reference vs Lambda
+
+Method Reference:
+
+```java
+Comparator.comparing(Employee::getSalary)
+```
+
+Equivalent Lambda:
+
+```java
+Comparator.comparing(employee -> employee.getSalary())
+```
+
+---
+
+### Common Interview Patterns
+
+```java
+// Sort by age
+Comparator.comparingInt(Employee::getAge)
+
+// Sort by salary descending
+Comparator.comparing(Employee::getSalary)
+          .reversed()
+
+// Sort by salary, then age
+Comparator.comparing(Employee::getSalary)
+          .thenComparing(Employee::getAge)
+
+// Sort by salary, age, then name
+Comparator.comparing(Employee::getSalary)
+          .thenComparing(Employee::getAge)
+          .thenComparing(Employee::getName)
+```
+
+### Common Mistake
+
+❌ Incorrect
+
+```java
+.thenComparing(Employee.getName)
+```
+
+✅ Correct
+
+```java
+.thenComparing(Employee::getName)
+```
+
+`thenComparing()` expects a method reference or comparator, not a method call.
+
 ---
 
 ## Streams API
