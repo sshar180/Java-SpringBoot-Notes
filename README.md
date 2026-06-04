@@ -560,6 +560,12 @@ PriorityQueue<Abc> pq2 = new PriorityQueue<>(cmp);
 pq2.poll();
 ```
 
+```
+//Sort Employees
+Collections.sort(list,
+    Comparator.comparing(Employee::getSalary));
+```
+
 ---
 
 ## Streams API
