@@ -238,6 +238,108 @@ String.join("-", "a", "b", "c");       // "a-b-c"
 "Hello".toCharArray();                 // ['H','e','l','l','o']
 ```
 
+### Common StringBuilder Methods
+
+```java
+StringBuilder sb = new StringBuilder("Hello");
+
+sb.length();                           // 5
+sb.charAt(1);                          // 'e'
+
+sb.append(" World");                   // "Hello World"
+sb.insert(5, " Java");                 // "Hello Java World"
+
+sb.delete(5, 10);                      // Deletes chars from index 5 to 9
+sb.deleteCharAt(0);                    // Deletes first character
+
+sb.replace(0, 5, "Hi");                // Replace chars in range [0,5)
+
+sb.reverse();                          // Reverse the content
+
+sb.setCharAt(0, 'X');                  // Change character at index 0
+
+sb.substring(0, 5);                    // Returns String -> "Hello"
+sb.substring(6);                       // Returns String from index 6
+
+sb.indexOf("World");                   // First occurrence
+sb.indexOf("o", 5);                    // Search after index 5
+sb.lastIndexOf("o");                   // Last occurrence
+
+sb.capacity();                         // Current capacity
+sb.ensureCapacity(100);                // Increase capacity if needed
+
+sb.setLength(3);                       // Truncate to length 3
+sb.setLength(10);                      // Extend with '\0' characters
+
+sb.toString();                         // Convert to String
+
+new StringBuilder("abcd")
+    .reverse()
+    .toString();                       // "dcba"
+```
+
+### String vs StringBuilder
+
+| String | StringBuilder |
+|----------|----------|
+| Immutable | Mutable |
+| Thread Safe | No |
+| Creates new object on modification | Modifies same object |
+| Slower for frequent updates | Faster for frequent updates |
+
+### StringBuilder-Only Methods (Very Important)
+
+```java
+append()
+insert()
+delete()
+deleteCharAt()
+replace()
+reverse()
+setCharAt()
+setLength()
+capacity()
+ensureCapacity()
+trimToSize()
+```
+
+### Interview Favorites
+
+```java
+StringBuilder sb = new StringBuilder();
+
+sb.append("Java")
+  .append(" ")
+  .append("Spring");
+
+System.out.println(sb);                // Java Spring
+```
+
+```java
+String reversed =
+    new StringBuilder("Interview")
+        .reverse()
+        .toString();
+
+System.out.println(reversed);          // weivretnI
+```
+
+```java
+StringBuilder sb = new StringBuilder("Hello");
+sb.setCharAt(0, 'Y');
+
+System.out.println(sb);                // Yello
+```
+
+### Capacity Examples
+
+```java
+new StringBuilder().capacity();        // 16
+
+new StringBuilder("Hello").capacity(); // 21 (16 + 5)
+
+new StringBuilder(50).capacity();      // 50
+```
 ---
 
 ## Wrapper Classes & Type Conversion
