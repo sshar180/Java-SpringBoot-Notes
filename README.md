@@ -583,6 +583,491 @@ map.computeIfPresent("Ram", (k, v) -> v + 10);
 map.merge("apple", 1, Integer::sum);
 ```
 
+# Java Map Compute Methods (Java 8+)
+
+These methods provide atomic and cleaner updates to a `Map` without explicit `containsKey()` checks.
+
+---
+
+# 1. compute()
+
+## Signature
+
+```java
+V compute(K key,
+          BiFunction<? super K,
+                     ? super V,
+                     ? extends V> remappingFunction)
+```
+
+## When does it execute?
+
+✅ Always
+
+- Key exists → receives current value
+- Key absent → receives `null`
+
+## Parameters
+
+```java
+(key, value)
+```
+
+## Example
+
+```java
+map.compute("Alice", (k, v) -> (v == null ? 0 : v) + 5);
+```
+
+### Existing Key
+
+```java
+Alice=100
+```
+
+Result:
+
+```java
+Alice=105
+```
+
+### Missing Key
+
+```java
+Bob=null
+```
+
+Result:
+
+```java
+Bob=5
+```
+
+## Remove Entry
+
+Returning `null` removes the key.
+
+```java
+map.compute("Alice", (k, v) -> null);
+```
+
+---
+
+# 2. computeIfAbsent()
+
+## Signature
+
+```java
+V computeIfAbsent(
+    K key,
+    Function<? super K,
+             ? extends V> mappingFunction)
+```
+
+## When does it execute?
+
+✅ Only if key is absent
+
+❌ Not executed if key already exists
+
+## Parameters
+
+```java
+(key)
+```
+
+## Example
+
+```java
+map.computeIfAbsent("Bob", k -> 75);
+```
+
+If Bob doesn't exist:
+
+```java
+Bob=75
+```
+
+If Bob already exists:
+
+```java
+No change
+```
+
+---
+
+## Most Common Usage
+
+### Grouping
+
+```java
+Map<String, List<String>> groups = new HashMap<>();
+
+groups.computeIfAbsent(
+    "A",
+    k -> new ArrayList<>()
+).add("ABC");
+```
+
+Equivalent to:
+
+```java
+if (!groups.containsKey("A")) {
+    groups.put("A", new ArrayList<>());
+}
+
+groups.get("A").add("ABC");
+```
+
+---
+
+# 3. computeIfPresent()
+
+## Signature
+
+```java
+V computeIfPresent(
+    K key,
+    BiFunction<? super K,
+               ? super V,
+               ? extends V> remappingFunction)
+```
+
+## When does it execute?
+
+✅ Only if key exists
+
+❌ Does nothing if key missing
+
+## Parameters
+
+```java
+(key, value)
+```
+
+## Example
+
+```java
+map.computeIfPresent(
+    "Ram",
+    (k, v) -> v + 10
+);
+```
+
+Before:
+
+```java
+Ram=50
+```
+
+After:
+
+```java
+Ram=60
+```
+
+---
+
+## Remove Entry
+
+```java
+map.computeIfPresent(
+    "Ram",
+    (k, v) -> null
+);
+```
+
+Removes Ram from the map.
+
+---
+
+# 4. merge()
+
+## Signature
+
+```java
+V merge(
+    K key,
+    V value,
+    BiFunction<? super V,
+               ? super V,
+               ? extends V> remappingFunction)
+```
+
+## Parameters
+
+```java
+(oldValue, newValue)
+```
+
+⚠️ No key parameter available.
+
+---
+
+## Behavior
+
+### Key Missing
+
+```java
+map.merge("apple", 1, Integer::sum);
+```
+
+Result:
+
+```java
+apple=1
+```
+
+---
+
+### Key Exists
+
+Current:
+
+```java
+apple=5
+```
+
+Code:
+
+```java
+map.merge("apple", 1, Integer::sum);
+```
+
+Internally:
+
+```java
+(5,1) -> 6
+```
+
+Result:
+
+```java
+apple=6
+```
+
+---
+
+## Most Common Usage
+
+### Frequency Counter
+
+```java
+for (String word : words) {
+    map.merge(word, 1, Integer::sum);
+}
+```
+
+Example:
+
+```java
+banana
+```
+
+Result:
+
+```java
+{
+ b=1,
+ a=3,
+ n=2
+}
+```
+
+---
+
+# Return Values
+
+All compute methods return the final value associated with the key.
+
+```java
+Integer result =
+    map.computeIfPresent(
+        "Alice",
+        (k,v) -> v + 10
+    );
+```
+
+Map:
+
+```java
+Alice=110
+```
+
+Return value:
+
+```java
+110
+```
+
+---
+
+# Why This Works
+
+```java
+map.computeIfAbsent(
+    "A",
+    k -> new ArrayList<>()
+).add("ABC");
+```
+
+The method returns the actual object stored in the map.
+
+Equivalent:
+
+```java
+List<String> list =
+    map.computeIfAbsent(
+        "A",
+        k -> new ArrayList<>()
+    );
+
+list.add("ABC");
+```
+
+The returned object is the same reference stored inside the map.
+
+No additional `put()` required.
+
+---
+
+# Comparison Table
+
+| Method | Executes When | Lambda Arguments |
+|----------|----------|----------|
+| compute() | Always | (key, value) |
+| computeIfAbsent() | Key missing | (key) |
+| computeIfPresent() | Key exists | (key, value) |
+| merge() | Key exists or absent | (oldValue, newValue) |
+
+---
+
+# Interview Questions
+
+## Q1: Difference between compute() and computeIfPresent()?
+
+### Answer
+
+`compute()` executes regardless of whether the key exists.
+
+`computeIfPresent()` executes only when the key exists.
+
+---
+
+## Q2: Difference between computeIfAbsent() and putIfAbsent()?
+
+### Answer
+
+`putIfAbsent()` requires a value immediately.
+
+```java
+map.putIfAbsent("A", new ArrayList<>());
+```
+
+Object gets created every time.
+
+`computeIfAbsent()` creates the object lazily.
+
+```java
+map.computeIfAbsent(
+    "A",
+    k -> new ArrayList<>()
+);
+```
+
+Object created only if needed.
+
+---
+
+## Q3: Difference between merge() and compute()?
+
+### Answer
+
+Use `merge()` for aggregation/counters.
+
+```java
+map.merge(word, 1, Integer::sum);
+```
+
+Use `compute()` when you need access to both key and value.
+
+```java
+map.compute(
+    userId,
+    (k,v) -> complexLogic(k,v)
+);
+```
+
+---
+
+## Q4: What happens if the lambda returns null?
+
+### Answer
+
+The entry is removed from the map.
+
+```java
+map.compute("A", (k,v) -> null);
+```
+
+or
+
+```java
+map.computeIfPresent("A", (k,v) -> null);
+```
+
+---
+
+## Q5: Why is computeIfAbsent() commonly used with List?
+
+### Answer
+
+For grouping operations.
+
+```java
+map.computeIfAbsent(
+    key,
+    k -> new ArrayList<>()
+).add(value);
+```
+
+Common in stream grouping and map-based aggregations.
+
+---
+
+# Common Interview Pattern
+
+## Group Anagrams
+
+```java
+Map<String, List<String>> groups =
+        new HashMap<>();
+
+for (String word : words) {
+
+    char[] arr = word.toCharArray();
+    Arrays.sort(arr);
+
+    String key = new String(arr);
+
+    groups.computeIfAbsent(
+        key,
+        k -> new ArrayList<>()
+    ).add(word);
+}
+```
+
+---
+
+# Memory Trick
+
+```text
+compute           -> Always
+computeIfAbsent   -> Missing key only
+computeIfPresent  -> Existing key only
+merge             -> Aggregation / Counter
+```
+
 ### Three Ways to Iterate a Map
 
 ```java
