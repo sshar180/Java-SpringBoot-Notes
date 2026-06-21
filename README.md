@@ -1426,6 +1426,490 @@ Map<String, List<String>> grouped = Arrays.stream(strs)
 return new ArrayList<>(grouped.values());
 ```
 
+# Stream + Collectors.toMap() Deep Dive
+
+## Template
+
+```java
+Collectors.toMap(
+    keyMapper,
+    valueMapper,
+    mergeFunction
+)
+```
+
+### What each parameter does
+
+```java
+keyMapper
+```
+
+Determines the key in the map.
+
+```java
+word -> word
+```
+
+Example:
+
+```java
+"JAVA" -> "JAVA"
+"SPRING" -> "SPRING"
+```
+
+---
+
+```java
+valueMapper
+```
+
+Determines the initial value for the key.
+
+```java
+word -> 1
+```
+
+Example:
+
+```java
+JAVA -> 1
+SPRING -> 1
+AWS -> 1
+```
+
+---
+
+```java
+mergeFunction
+```
+
+Runs only when a duplicate key is encountered.
+
+```java
+(oldValue, newValue) -> oldValue + newValue
+```
+
+Important:
+
+```java
+oldValue
+```
+
+= Existing value already present in the map.
+
+```java
+newValue
+```
+
+= Newly generated value from the valueMapper.
+
+---
+
+## Word Count Example
+
+Input:
+
+```java
+String str = "java spring java aws spring java";
+```
+
+Solution:
+
+```java
+Map<String,Integer> wordCount =
+        Arrays.stream(str.split(" "))
+              .map(word -> word.toUpperCase())
+              .collect(Collectors.toMap(
+                      word -> word,
+                      word -> 1,
+                      (oldValue, newValue) ->
+                              oldValue + newValue
+              ));
+```
+
+Output:
+
+```java
+{
+    JAVA=3,
+    SPRING=2,
+    AWS=1
+}
+```
+
+---
+
+# How it Works Internally
+
+Stream after map():
+
+```java
+JAVA
+SPRING
+JAVA
+AWS
+SPRING
+JAVA
+```
+
+---
+
+### First JAVA
+
+Key:
+
+```java
+word -> word
+```
+
+Result:
+
+```java
+JAVA
+```
+
+Value:
+
+```java
+word -> 1
+```
+
+Result:
+
+```java
+1
+```
+
+Map:
+
+```java
+{JAVA=1}
+```
+
+No merge function called.
+
+---
+
+### Second JAVA
+
+Trying to insert:
+
+```java
+JAVA=1
+```
+
+Map already contains:
+
+```java
+JAVA=1
+```
+
+Merge function executes:
+
+```java
+(oldValue, newValue)
+```
+
+becomes:
+
+```java
+(1,1)
+```
+
+Result:
+
+```java
+1 + 1 = 2
+```
+
+Map:
+
+```java
+{JAVA=2}
+```
+
+---
+
+### Third JAVA
+
+Trying to insert:
+
+```java
+JAVA=1
+```
+
+Map already contains:
+
+```java
+JAVA=2
+```
+
+Merge function:
+
+```java
+(oldValue, newValue)
+```
+
+becomes:
+
+```java
+(2,1)
+```
+
+Result:
+
+```java
+2 + 1 = 3
+```
+
+Map:
+
+```java
+{JAVA=3}
+```
+
+---
+
+# Most Common Confusion
+
+Many developers think:
+
+```java
+(oldValue, newValue)
+```
+
+means:
+
+```java
+(key, value)
+```
+
+This is WRONG.
+
+It actually means:
+
+```java
+(existingValueInMap,
+ newlyGeneratedValueFromValueMapper)
+```
+
+Example:
+
+```java
+Collectors.toMap(
+    word -> word,
+    word -> 1,
+    (oldValue, newValue) ->
+        oldValue + newValue
+)
+```
+
+When duplicate JAVA appears:
+
+```java
+oldValue = 2
+newValue = 1
+```
+
+Result:
+
+```java
+3
+```
+
+---
+
+# Why This Was Wrong
+
+```java
+Collectors.toMap(
+    word -> word,
+    word -> 0,
+    (oldValue, newValue) ->
+        oldValue + 1
+)
+```
+
+Flow:
+
+### First JAVA
+
+```java
+JAVA=0
+```
+
+### Second JAVA
+
+```java
+0 + 1 = 1
+```
+
+### Third JAVA
+
+```java
+1 + 1 = 2
+```
+
+Final:
+
+```java
+JAVA=2
+```
+
+Actual count:
+
+```java
+JAVA=3
+```
+
+Off by one.
+
+Reason:
+
+```java
+valueMapper starts with 0
+```
+
+instead of:
+
+```java
+valueMapper starts with 1
+```
+
+---
+
+# Method Reference vs Lambda
+
+### Method Reference
+
+```java
+.map(String::toUpperCase)
+```
+
+Equivalent:
+
+```java
+.map(word -> word.toUpperCase())
+```
+
+---
+
+### Method Reference
+
+```java
+Integer::sum
+```
+
+Equivalent:
+
+```java
+(oldValue, newValue) ->
+        oldValue + newValue
+```
+
+---
+
+### Method Reference
+
+```java
+String::length
+```
+
+Equivalent:
+
+```java
+str -> str.length()
+```
+
+---
+
+# Interview Mental Model
+
+For:
+
+```java
+Collectors.toMap(
+    keyMapper,
+    valueMapper,
+    mergeFunction
+)
+```
+
+Think:
+
+```java
+What should be the key?
+
+What should be the initial value?
+
+If the key already exists,
+how should I merge the old and new values?
+```
+
+For Word Count:
+
+```java
+Collectors.toMap(
+    word -> word,              // key
+    word -> 1,                 // initial count
+    (oldValue,newValue) ->
+        oldValue + newValue    // merge duplicate words
+)
+```
+
+---
+
+# Alternative Interview Solution
+
+```java
+Map<String,Long> wordCount =
+        Arrays.stream(str.split("\\s+"))
+              .collect(Collectors.groupingBy(
+                      word -> word.toUpperCase(),
+                      Collectors.counting()
+              ));
+```
+
+Output:
+
+```java
+{
+    JAVA=3,
+    SPRING=2,
+    AWS=1
+}
+```
+
+### Mental Model
+
+```java
+groupingBy(...)
+```
+
+Groups elements.
+
+```java
+counting()
+```
+
+Counts elements in each group.
+
+Example:
+
+```java
+JAVA -> [JAVA, JAVA, JAVA]
+SPRING -> [SPRING, SPRING]
+AWS -> [AWS]
+```
+
+After counting:
+
+```java
+JAVA=3
+SPRING=2
+AWS=1
+```
+
 ---
 
 ## Optional
