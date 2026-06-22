@@ -2012,6 +2012,757 @@ Callable<Integer> c = () -> 42;
 | Throws checked exception | ❌ | ✅ |
 | Used with | `Thread`, `Executor` | `ExecutorService.submit()` |
 
+
+## Runnable
+
+`Runnable` represents a task that does not return anything.
+
+```java
+@FunctionalInterface
+public interface Runnable {
+    void run();
+}
+```
+
+### Key Points
+
+- `Runnable` has only one abstract method: `run()`.
+- It does not return a value.
+- It cannot throw checked exceptions directly.
+- It can be passed to a `Thread`.
+- It can also be submitted to an `ExecutorService`.
+
+---
+
+## Creating Runnable
+
+### 1. Anonymous Class
+
+```java
+Runnable rn = new Runnable() {
+    @Override
+    public void run() {
+        try {
+            Thread.sleep(8000);
+        } catch (Exception e) {
+            System.out.println(e);
+        }
+
+        System.out.println("This is first logic " + Thread.currentThread().threadId());
+    }
+};
+```
+
+### 2. Lambda Expression
+
+Because `Runnable` is a functional interface, we can write it using lambda.
+
+```java
+Runnable rn2 = () -> {
+    try {
+        Thread.sleep(7890);
+    } catch (Exception e) {
+        System.out.println(e);
+    }
+
+    System.out.println("This is second logic " + Thread.currentThread().threadId());
+};
+```
+
+---
+
+## Running Runnable Using Thread
+
+Before `ExecutorService`, we manually created threads.
+
+```java
+Thread th1 = new Thread(rn);
+Thread th2 = new Thread(rn);
+Thread th3 = new Thread(rn);
+
+th1.start();
+th2.start();
+th3.start();
+```
+
+### Important
+
+Use `start()`, not `run()`.
+
+```java
+th1.start(); // creates a new thread and runs the task
+th1.run();   // normal method call, no new thread
+```
+
+---
+
+## Problem with Manually Creating Threads
+
+If we need 100 tasks, creating 100 threads manually is not good.
+
+```java
+for (int i = 0; i < 100; i++) {
+    new Thread(rn).start();
+}
+```
+
+Problems:
+
+- Thread creation is expensive.
+- Too many threads can hurt performance.
+- We need to manage thread lifecycle ourselves.
+- It is hard to control how many tasks run at the same time.
+
+---
+
+## ExecutorService
+
+`ExecutorService` manages a pool of reusable worker threads.
+
+```java
+ExecutorService es = Executors.newFixedThreadPool(5);
+```
+
+This means:
+
+```text
+ExecutorService has 5 worker threads.
+
+Task 1 -> Worker 1
+Task 2 -> Worker 2
+Task 3 -> Worker 3
+Task 4 -> Worker 4
+Task 5 -> Worker 5
+Task 6 -> waits in queue
+```
+
+When a worker finishes, it picks the next task from the queue.
+
+---
+
+## submit() with Runnable
+
+```java
+ExecutorService es = Executors.newFixedThreadPool(5);
+
+for (int i = 0; i < 100; i++) {
+    es.submit(rn);
+    es.submit(rn2);
+}
+
+es.shutdown();
+```
+
+### What Happens Here?
+
+You submit 200 tasks total:
+
+```text
+100 times rn
+100 times rn2
+```
+
+But only 5 threads are created because pool size is 5.
+
+So at any moment, only 5 tasks run in parallel. The rest wait in the queue.
+
+---
+
+## Very Important: shutdown()
+
+Always shut down the executor.
+
+```java
+es.shutdown();
+```
+
+Without `shutdown()`, the program may look stuck because executor threads are still alive and waiting for more tasks.
+
+### Correct Example
+
+```java
+ExecutorService es = Executors.newFixedThreadPool(5);
+
+es.submit(rn);
+es.submit(rn2);
+
+es.shutdown();
+```
+
+---
+
+## Runnable Practice Code
+
+```java
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class RunnableExample {
+
+    public void runnableExample() {
+
+        Runnable rn = new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Thread.sleep(8000);
+                } catch (Exception e) {
+                    System.out.println(e);
+                }
+
+                System.out.println("This is first logic " + Thread.currentThread().threadId());
+            }
+        };
+
+        Runnable rn2 = () -> {
+            try {
+                Thread.sleep(7890);
+            } catch (Exception e) {
+                System.out.println(e);
+            }
+
+            System.out.println("This is second logic " + Thread.currentThread().threadId());
+        };
+
+        ExecutorService es = Executors.newFixedThreadPool(5);
+
+        for (int i = 0; i < 100; i++) {
+            es.submit(rn);
+            es.submit(rn2);
+        }
+
+        es.shutdown();
+    }
+}
+```
+
+---
+
+# Callable
+
+`Callable` represents a task that returns a value.
+
+```java
+@FunctionalInterface
+public interface Callable<V> {
+    V call() throws Exception;
+}
+```
+
+### Key Points
+
+- `Callable` returns a value.
+- It can throw checked exceptions.
+- It is used with `ExecutorService`.
+- It cannot be directly passed to `Thread`.
+
+---
+
+## Runnable vs Callable
+
+| Concept | Runnable | Callable |
+|---|---|---|
+| Method | `run()` | `call()` |
+| Return value | No return value | Returns value |
+| Checked exception | Cannot throw directly | Can throw |
+| Used with Thread | Yes | No |
+| Used with ExecutorService | Yes | Yes |
+| Result stored in | No result | `Future<V>` |
+
+---
+
+## Why Callable Cannot Be Passed Directly to Thread
+
+This works:
+
+```java
+Runnable rn = () -> System.out.println("Running");
+Thread t = new Thread(rn);
+t.start();
+```
+
+This does not work:
+
+```java
+Callable<Integer> task = () -> 100;
+Thread t = new Thread(task); // compile error
+```
+
+Reason:
+
+`Thread` constructor accepts `Runnable`, not `Callable`.
+
+```java
+Thread(Runnable target)
+```
+
+So for `Callable`, we usually use:
+
+```java
+ExecutorService es = Executors.newFixedThreadPool(3);
+Future<Integer> future = es.submit(callable);
+```
+
+---
+
+# Future
+
+When we submit a `Callable`, we get a `Future`.
+
+```java
+Future<Integer> future = es.submit(success);
+```
+
+Think of `Future` like a receipt.
+
+```text
+submit() -> start/schedule the task
+Future   -> receipt for the result
+get()    -> wait and collect the result
+```
+
+---
+
+## Future.get()
+
+```java
+Integer result = future.get();
+```
+
+`get()` is blocking.
+
+That means the current thread waits until the task completes.
+
+---
+
+## Manual Future Example
+
+```java
+ExecutorService es = Executors.newSingleThreadExecutor();
+
+Future<Integer> f = es.submit(fail);
+Future<Integer> s = es.submit(success);
+
+System.out.println(f.get());
+System.out.println(s.get());
+
+es.shutdown();
+```
+
+### Important
+
+With:
+
+```java
+Executors.newSingleThreadExecutor();
+```
+
+only one worker thread exists.
+
+So tasks run one by one.
+
+```text
+fail starts
+fail ends
+success starts
+success ends
+```
+
+Total time is around 5 seconds if:
+
+```text
+fail = 3 seconds
+success = 2 seconds
+```
+
+---
+
+## Fixed Thread Pool Example
+
+```java
+ExecutorService es = Executors.newFixedThreadPool(3);
+```
+
+This creates 3 worker threads.
+
+If you submit 10 tasks, only 3 run at a time. Remaining tasks wait in queue.
+
+---
+
+# Handling Multiple Futures in a Loop
+
+This is the correct pattern:
+
+```java
+ExecutorService es = Executors.newFixedThreadPool(3);
+
+List<Future<Integer>> futures = new ArrayList<>();
+
+for (int i = 0; i < 5; i++) {
+    futures.add(es.submit(fail));
+    futures.add(es.submit(success));
+}
+
+for (Future<Integer> future : futures) {
+    Integer result = future.get();
+    System.out.println(result);
+}
+
+es.shutdown();
+```
+
+---
+
+## Why Two Loops?
+
+### First Loop: Submit All Tasks
+
+```java
+for (int i = 0; i < 5; i++) {
+    futures.add(es.submit(fail));
+    futures.add(es.submit(success));
+}
+```
+
+This schedules all tasks first.
+
+### Second Loop: Collect Results
+
+```java
+for (Future<Integer> future : futures) {
+    Integer result = future.get();
+    System.out.println(result);
+}
+```
+
+This waits for results.
+
+This is better because tasks can run in parallel.
+
+---
+
+## Bad Pattern
+
+```java
+for (int i = 0; i < 5; i++) {
+    Future<Integer> f = es.submit(success);
+    System.out.println(f.get());
+}
+```
+
+This submits one task and immediately waits for it.
+
+So it becomes almost sequential.
+
+---
+
+# Callable Practice Code
+
+```java
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.*;
+
+public class Main {
+    public static void main(String[] args) throws Exception {
+
+        Callable<Integer> fail = new Callable<Integer>() {
+            @Override
+            public Integer call() throws Exception {
+                System.out.println("Fail Thread ID: " + Thread.currentThread().threadId() + " Started");
+                Thread.sleep(3000);
+                System.out.println("Fail Thread ID: " + Thread.currentThread().threadId() + " Ended");
+                return 404;
+            }
+        };
+
+        Callable<Integer> success = () -> {
+            System.out.println("Success Thread ID: " + Thread.currentThread().threadId() + " Started");
+            Thread.sleep(2000);
+            System.out.println("Success Thread ID: " + Thread.currentThread().threadId() + " Ended");
+            return 201;
+        };
+
+        ExecutorService es = Executors.newFixedThreadPool(3);
+
+        List<Future<Integer>> futures = new ArrayList<>();
+
+        for (int i = 0; i < 5; i++) {
+            futures.add(es.submit(fail));
+            futures.add(es.submit(success));
+        }
+
+        for (Future<Integer> future : futures) {
+            Integer result = future.get();
+            System.out.println(result);
+        }
+
+        es.shutdown();
+    }
+}
+```
+
+---
+
+# FutureTask
+
+`FutureTask` is a special class that can wrap a `Callable`.
+
+It implements `Runnable`, so it can be passed to a `Thread`.
+
+```java
+Callable<String> task = () -> "Result from FutureTask";
+
+FutureTask<String> futureTask = new FutureTask<>(task);
+
+Thread thread = new Thread(futureTask);
+thread.start();
+
+String result = futureTask.get();
+System.out.println(result);
+```
+
+### Why This Works
+
+`Thread` accepts `Runnable`.
+
+`FutureTask` implements `Runnable`.
+
+So:
+
+```text
+Callable -> FutureTask -> Thread
+```
+
+---
+
+# ExecutorService Types
+
+## newSingleThreadExecutor()
+
+```java
+ExecutorService es = Executors.newSingleThreadExecutor();
+```
+
+Creates only one worker thread.
+
+Tasks run sequentially.
+
+Good for:
+
+- Ordered execution
+- One background worker
+- Queue-style processing
+
+---
+
+## newFixedThreadPool(n)
+
+```java
+ExecutorService es = Executors.newFixedThreadPool(5);
+```
+
+Creates fixed number of worker threads.
+
+Good for:
+
+- Running multiple tasks in parallel
+- Controlling max concurrency
+- Backend service calls
+- Batch processing
+
+---
+
+## newCachedThreadPool()
+
+```java
+ExecutorService es = Executors.newCachedThreadPool();
+```
+
+Creates threads as needed and reuses idle threads.
+
+Be careful because it can create many threads.
+
+---
+
+# Real-Life Usage
+
+In real applications, we usually do not manually create 100 threads.
+
+Instead, we submit tasks to an executor.
+
+Example use cases:
+
+- Calling multiple downstream APIs
+- Processing many files
+- Sending notifications
+- Running independent background jobs
+- Parallel batch processing
+- Running CPU-heavy tasks with limited thread count
+
+---
+
+# Interview Mental Model
+
+```text
+Runnable  = task with no return value
+Callable  = task with return value
+Thread    = actual worker
+ExecutorService = manager of worker threads
+submit()  = give task to executor
+Future    = receipt for result
+get()     = wait for result
+shutdown() = stop accepting new tasks and close executor after existing tasks finish
+```
+
+---
+
+# Common Interview Questions
+
+## 1. Runnable vs Callable?
+
+`Runnable` does not return a value and cannot throw checked exceptions directly.
+
+`Callable` returns a value and can throw checked exceptions.
+
+---
+
+## 2. Why do we need ExecutorService?
+
+ExecutorService avoids manually creating and managing threads. It reuses a fixed number of worker threads and manages task queues internally.
+
+---
+
+## 3. What happens if we do not call shutdown()?
+
+The program may not exit because executor worker threads stay alive waiting for new tasks.
+
+---
+
+## 4. What does Future.get() do?
+
+It blocks the current thread until the task completes and returns the result.
+
+---
+
+## 5. Why should we store Futures in a List?
+
+When submitting tasks in a loop, we store Futures so we can collect results later.
+
+This allows all tasks to be submitted first and run concurrently.
+
+---
+
+## 6. Difference between single-thread executor and fixed-thread pool?
+
+`newSingleThreadExecutor()` uses one worker thread, so tasks run one by one.
+
+`newFixedThreadPool(n)` uses `n` worker threads, so up to `n` tasks can run in parallel.
+
+---
+
+## 7. Can Callable be passed directly to Thread?
+
+No.
+
+`Thread` accepts `Runnable`, not `Callable`.
+
+To run Callable with Thread, wrap it inside `FutureTask`.
+
+---
+
+# Mistakes to Avoid
+
+## Mistake 1: Forgetting shutdown()
+
+```java
+ExecutorService es = Executors.newFixedThreadPool(5);
+es.submit(task);
+// missing shutdown
+```
+
+Correct:
+
+```java
+ExecutorService es = Executors.newFixedThreadPool(5);
+es.submit(task);
+es.shutdown();
+```
+
+---
+
+## Mistake 2: Calling get() immediately inside submit loop
+
+Bad:
+
+```java
+for (int i = 0; i < 5; i++) {
+    Future<Integer> future = es.submit(success);
+    System.out.println(future.get());
+}
+```
+
+Better:
+
+```java
+List<Future<Integer>> futures = new ArrayList<>();
+
+for (int i = 0; i < 5; i++) {
+    futures.add(es.submit(success));
+}
+
+for (Future<Integer> future : futures) {
+    System.out.println(future.get());
+}
+```
+
+---
+
+## Mistake 3: Thinking submit() creates a new thread every time
+
+Wrong thinking:
+
+```text
+submit() called 100 times means 100 threads
+```
+
+Correct thinking:
+
+```text
+submit() called 100 times means 100 tasks.
+Executor decides how many threads execute them.
+```
+
+If pool size is 5, only 5 tasks run at a time.
+
+---
+
+## Mistake 4: Using run() instead of start()
+
+```java
+thread.run();   // normal method call
+thread.start(); // starts new thread
+```
+
+---
+
+# Final Summary
+
+`Runnable` is for fire-and-forget tasks.
+
+`Callable` is for tasks that return a result.
+
+`ExecutorService` manages worker threads.
+
+`submit()` gives tasks to the executor.
+
+`Future` is used to collect results.
+
+`get()` blocks until the result is ready.
+
+`shutdown()` is required to stop the executor properly.
+
+
 ### Future, Callable, ExecutorService
 
 ```java
